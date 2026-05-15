@@ -1,0 +1,8 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "plugins": ["require-audit-log"],
+  "rules": {
+    "require-audit-log/require-audit-log": "warn"
+  },
+  "ignorePatterns": [".next/", "node_modules/", "supabase/migrations/", "tests/e2e/"]
+}
