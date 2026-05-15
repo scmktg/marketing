@@ -1,16 +1,9 @@
 import { db, schema } from "@/lib/db/client";
 
-export type AuditAction =
-  | `${string}.created`
-  | `${string}.updated`
-  | `${string}.deleted`
-  | `${string}.approved`
-  | `${string}.rejected`
-  | `${string}.generated`
-  | `${string}.regenerated`
-  | `${string}.distributed`
-  | `${string}.kill_switch_toggled`
-  | `${string}.production_mode_toggled`;
+// Action name follows `<entity>.<verb>` convention. We don't constrain the
+// verb because the action vocabulary grows organically — onboarding events,
+// auth events, asset events. Validation is on us, not the type system.
+export type AuditAction = `${string}.${string}`;
 
 export type AuditEntry = {
   userId: string | null;

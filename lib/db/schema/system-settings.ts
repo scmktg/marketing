@@ -19,6 +19,14 @@ export const systemSettings = pgTable(
     // See PLAN.md §3.1.
     productionMode: boolean("production_mode").notNull().default(false),
 
+    // Manually-acknowledged onboarding step slugs (PLAN.md §10).
+    // Wizard steps that aren't auto-derived (deferred features, mobility
+    // sign-off, etc.) flip on by manager clicking "Mark step done".
+    onboardingCompletedSteps: text("onboarding_completed_steps")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+
     monthlyBudgetCents: integer("monthly_budget_cents").notNull().default(50000),
     viabilityCheckDaysPreEvent: integer("viability_check_days_pre_event").notNull().default(14),
     cronProposalTime: time("cron_proposal_time").notNull().default("06:00:00"),

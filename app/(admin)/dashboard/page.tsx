@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlaceholderTally } from "@/components/placeholder-tally";
 import { ProductionModeBanner } from "@/components/production-mode-banner";
+import { HardGatesBanner } from "@/components/onboarding/hard-gates-banner";
 
 // Dashboard. Mostly empty in v1 scaffold — KPI tiles, pipeline kanban,
 // today's queue, and recent learnings land in their respective PRs.
@@ -8,6 +9,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <ProductionModeBanner />
+      <HardGatesBanner />
 
       <div>
         <h1 className="text-2xl font-semibold text-beachie-deep">Dashboard</h1>
