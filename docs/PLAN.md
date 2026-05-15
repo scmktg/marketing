@@ -37,24 +37,26 @@ If you (the reviewer) want anything changed, mark this PR with comments — noth
 
 ### 1.2 Inngest cost projection at v1 volume
 
-Modelled monthly volume (matches §11 PR plan and brief §3.1):
+Modelled monthly volume (matches §13 PR plan and brief §3.1). One Inngest **step** = one `step.run` block; one function invocation typically has 3–4 steps (LLM call, voice scorer, store, plus the trigger). Fan-out multiplies through children.
 
-| Event source | Functions/mo | Steps/mo (with fan-out) |
-|---|---|---|
-| Weekly proposal cron (2–3 proposals/run × 4 weeks) | 4 | ~12 |
-| Asset pack generation (~4 events × 11 assets, 1 parent fans to 11 children) | 4 | ~48 |
-| Asset regenerations (~50% of assets get 1 regen) | ~22 | ~22 |
-| Daily digest | ~30 | ~30 |
-| Viability monitor (daily) | ~30 | ~30 |
-| Partner research (ad-hoc) | ~20 | ~40 (research uses 2 steps incl. web search) |
-| Partner suggest cron (weekly) | 4 | ~8 |
-| Post-event synthesis | ~4 | ~8 |
-| Monthly cost-cap check (daily) | ~30 | ~30 |
-| **Total** | **~150** | **~230** |
+| Event source | Invocations/mo | Steps per invocation | Steps/mo |
+|---|---|---|---|
+| Weekly proposal cron — 2–3 proposals/run × 4 weeks | 4 | 1 trigger + 3×(generate + voice-score + store) = 10 | ~40 |
+| Asset pack — 4 events × (1 parent + 11 children × 3 steps each) | 4 | 1 + 33 = 34 | ~136 |
+| Asset regenerations — ~50% of assets get 1 regen ≈ 22 regens | 22 | trigger + generate + voice-score + store = 4 | ~88 |
+| Daily digest — read DB + email | 30 | 3 | ~90 |
+| Viability monitor — daily query + alert conditional | 30 | 3 | ~90 |
+| Partner research — ad-hoc; web search + LLM enrich + store | 20 | 4 | ~80 |
+| Partner suggest cron — weekly batch | 4 | 3 | ~12 |
+| Post-event synthesis — read priors + LLM + update meta + store | 4 | 5 | ~20 |
+| Monthly cost-cap check — daily | 30 | 3 | ~90 |
+| Subtotal | | | **~646** |
+| Retries @ ~5% | | | **~32** |
+| **Total** | | | **~680** |
 
-Inngest's free tier (as of late 2025) covers 50K function runs/month; the next paid tier (Pro) is **USD 20/mo** at the time of writing. v1 volume sits ~0.5% of the free tier ceiling, so:
+Inngest's free tier (as of late 2025) covers 50K step executions/month; the next paid tier (Pro) is **USD 20/mo** at the time of writing. v1 volume sits at ~1.4% of the free tier ceiling. At 3–4× growth (~2,700 steps/mo) we are still under 6%, so:
 
-> **Projected v1 Inngest cost: USD 0/mo (free tier), capped at USD 20/mo if we hit the Pro tier for concurrency or observability features.**
+> **Projected v1 Inngest cost: USD 0/mo (free tier), capped at USD 20/mo if we hit the Pro tier for concurrency or observability features. Conclusion holds even at 5× growth.**
 
 Well below the USD 100/mo threshold flagged by the reviewer. The Vercel Cron + DB-backed queue alternative would save the eventual USD 20/mo but cost engineer-days to build and operate (retries, dead-letter, observability, fan-out). Net: **keep Inngest**. Reviewer should spot-check Inngest's current pricing page at scaffold time; if pricing has shifted materially, fall back to Vercel Cron + a simple jobs table + a `worker` function with manual retries.
 
