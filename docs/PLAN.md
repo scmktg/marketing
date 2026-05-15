@@ -495,7 +495,7 @@ Brief §6 lists 14 onboarding steps. Not all are equal — some block the system
 
 1. **Room inventory complete.** `SUM(room_types.count) = property_profile.total_rooms` (= 83). Enforced as a DB check constraint and as a UI block on the dashboard until satisfied. Brief §6 step 3.
 2. **Brand voice reviewed by manager.** `brand_voice.reviewed_by_manager = true`, set explicitly by the manager clicking "I have reviewed this voice guide" during onboarding step 10. Until then, every generation pipeline refuses with a clear error linking back to the voice-edit screen. Prevents shipping campaigns in a hallucinated voice.
-3. **Photo library ≥ 20 photos.** `COUNT(photo_library) ≥ 20`. The asset visual pipeline (landing pages, flyers) refuses below this — the hero photo selector has nothing to pick from.
+3. **Photo library ≥ 40 photos.** `COUNT(photo_library) ≥ 40`. The asset visual pipeline (landing pages, flyers) refuses below this — the hero photo selector has nothing to pick from. Threshold raised from 20 to 40 to give the selector real variety across categories (rooms / lake / grounds / food / function spaces / brand details).
 
 The onboarding flow shows a persistent banner listing the unmet gates until they're all green; the dashboard's "Generate" buttons are disabled with a tooltip pointing to the failing gate.
 
@@ -527,7 +527,7 @@ Tight in v1; expandable as the surface area grows.
 
 ### 11.2 End-to-end: Playwright, one spec only in v1
 
-The single e2e spec covers onboarding end-to-end: signup → create knowledge base → upload 20 photos (fixtures) → seed partners → mark voice reviewed → land on dashboard. Onboarding is the only flow where a regression silently breaks the entire system (a soft-gate bug doesn't; an onboarding bug does), so it gets the only e2e in v1. We add more in subsequent weeks if it pays off.
+The single e2e spec covers onboarding end-to-end: signup → create knowledge base → upload 40 photos (fixtures) → seed partners → mark voice reviewed → land on dashboard. Onboarding is the only flow where a regression silently breaks the entire system (a soft-gate bug doesn't; an onboarding bug does), so it gets the only e2e in v1. We add more in subsequent weeks if it pays off.
 
 ### 11.3 Prompt evals — `docs/prompts/evals/`
 
@@ -587,11 +587,12 @@ Uses the system Chrome via `puppeteer` (not `@sparticuz/chromium`). PDF outputs 
 
 Mapping brief §10 to discrete PRs. Each PR is reviewable in <1 hour.
 
+**Note on `feat/scaffold` + `feat/knowledge-schema`:** these two PRs from the original plan were merged into a single `feat/scaffold` PR during build. Rationale: the placeholder + `production_mode` strategy (§3.1) requires the property knowledge schema to exist from day one, so splitting them produced an empty intermediate state. The merged PR landed both the Next.js/Supabase/Drizzle foundation and all 11 property knowledge tables + idempotent seed script in one reviewable unit.
+
 | Week | PR | Deliverable | Definition of done |
 |---|---|---|---|
-| 1 | `feat/scaffold` | Next.js + Drizzle + Supabase + Auth shell | Logged-in user lands on empty dashboard |
-| 1 | `feat/knowledge-schema` | Property knowledge tables + migrations + seed script | `pnpm seed:property` populates §2.2 defaults |
-| 1 | `feat/knowledge-crud` | Admin CRUD UI for all 7 knowledge tables | Manager can edit rates; marketing has read-only |
+| 1 | `feat/scaffold` *(includes former `feat/knowledge-schema`)* | Next.js + Drizzle + Supabase + Auth shell + all 11 property knowledge tables with `is_placeholder` + idempotent seed + room-count trigger | Logged-in user lands on empty dashboard; `pnpm seed:property` populates 11 tables idempotently with rooms summing to 83 |
+| 1 | `feat/knowledge-crud` | Admin CRUD UI for all 11 knowledge tables | Manager can edit any record (flips `is_placeholder=false`); marketing has read-only |
 | 1 | `feat/onboarding` | 14-step onboarding flow with the three hard gates (§10) | Onboarding completion gates dashboard; soft banners visible |
 | 2 | `feat/prompt-runtime` | `lib/ai/client.ts`, prompts_log, cost tracking, granular kill-switch flags + master toggle UI, dev OpenAI mock | Every OpenAI call logged with cost; dev mock works offline |
 | 2 | `feat/brand-voice-pipeline` | `brand_voice` table + reviewed_by_manager gate + conformance scorer | Generation refuses when voice not reviewed; scorer attaches to every asset |
@@ -651,7 +652,7 @@ We can scaffold without these but the system will not produce useful proposals u
 | Brand voice drift across regenerations | Inconsistent campaigns | Conformance scorer (§4.6) is the structural fix; voice version pinned per proposal |
 | Manager doesn't complete onboarding fully | System can't produce useful proposals | Hard gates (§10) block generation; soft banners list what's missing without halting work |
 | Choice Hotels brand standards conflict | Generated copy may violate parent brand | Hold marketing-asset generation behind a soft banner until brand docs are uploaded; flag audit entries until then |
-| Image library too small | Repetitive visual assets | ≥ 20 photos is a hard gate (§10) |
+| Image library too small | Repetitive visual assets | ≥ 40 photos is a hard gate (§10) |
 | Postgres jsonb proposal schema drift | Hard to migrate later | Version every jsonb shape (`content.version`); writer always writes current version; reader supports prior versions |
 | Cost overrun | OpenAI bill blows the cap | Hard monthly cap + kill switch + per-user rate limits on on-demand chat; dev-mode USD 5/day cap |
 | Supabase RLS bugs locking out admin | Site broken | Server-side role checks are primary; RLS is defence-in-depth, not the gate |

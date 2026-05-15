@@ -78,7 +78,7 @@ v1 uses a **shared Supabase dev project** for simplicity. When the team grows pa
 
 Every generated marketing asset is watermarked **TEST — built from placeholder data** until `system_settings.production_mode = true`. Flipping that flag requires:
 
-- All three onboarding hard gates green (room inventory, brand voice reviewed, ≥20 photos uploaded — `docs/PLAN.md` §10).
+- All three onboarding hard gates green (room inventory, brand voice reviewed, ≥40 photos uploaded — `docs/PLAN.md` §10).
 - `is_placeholder = false` for every row in the property knowledge tables.
 - A manager-role user performing the flip from the Settings page.
 

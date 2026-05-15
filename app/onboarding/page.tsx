@@ -35,7 +35,7 @@ export default function OnboardingStubPage() {
               <em className="ml-1 text-beachie-deep/60">Defaults false; flip from Knowledge → Brand Voice.</em>
             </li>
             <li>
-              Photo library ≥ 20 photos.
+              Photo library ≥ 40 photos.
               <em className="ml-1 text-beachie-deep/60">Upload from Knowledge → Photo Library.</em>
             </li>
           </ul>
