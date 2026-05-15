@@ -1,8 +1,10 @@
 # The Beachie Midweek Engine — Implementation Plan
 
-**Status:** Draft v0.2 — for manager review before any scaffolding work begins.
+**Status:** Draft v0.3 — scaffolding in progress.
 **Source spec:** [`docs/SPEC.md`](./SPEC.md) (the master brief; treat as authoritative when this plan and the spec disagree).
 **Target:** v1, brain-only, no external integrations beyond OpenAI.
+
+**Changelog v0.2 → v0.3:** Added the placeholder seed-data + `production_mode` strategy (new §3.x, §6.x) so the build can run ahead of onboarding data collection. Every property knowledge table gets an `is_placeholder` boolean (default true for seed-script values, flips to false on first manager edit). Admin UI shows yellow banners per record + a dashboard tally. A single `system_settings.production_mode` boolean (default false) gates real distribution: when false, every generated marketing asset is watermarked "TEST — built from placeholder data" and the distribution checklist refuses to mark items "sent". Manager flips it true only after replacing placeholders and signing off onboarding.
 
 **Changelog v0.1 → v0.2:** Brand voice promoted to a first-class structural guardrail (§4.5, §4.6). Image guardrail switched from a word blocklist to a category enum (§4.5, §6). Voucher schema restructured as `voucher_batches` (§3). Kill switch split into three granular flags (§3, §7). `attribution_notes` added to `bookings` (§3). Explicit onboarding hard gates added (new §10). On-demand chat router design added (new §4.7). Testing approach added (new §11). Local dev story added (new §12). CSV export added for partners and bookings (§3, §13). Inngest cost projection added (§1.2). Sections 10–13 from v0.1 renumbered to 13–16.
 
@@ -241,6 +243,27 @@ system_settings            — single row;
 - **`bookings.attribution_notes`** — front desk often has more context than a single channel enum can hold ("saw the FB ad first, came in via the voucher from Castle Hill Hair Studio"). The free-text field captures it without forcing a structured taxonomy; the synthesis prompt mines it during post-event learning.
 - **`audit_log.before/after` is jsonb** — not joinable but trivially diffable in the UI.
 - **No soft-delete** — kept simple in v1. Status fields cover lifecycle.
+
+### 3.1 Placeholder seed data and `production_mode`
+
+The build runs ahead of onboarding data collection. To make that safe, two mechanisms work together:
+
+**Per-row `is_placeholder: boolean`.** Every property knowledge table (`property_profile`, `room_types`, `function_spaces`, `fb_venues`, `regular_programming`, `local_context_pois`, `target_postcodes`, `brand_voice`, `operational_constants`, `photo_library`, `talent_database`) gets an `is_placeholder` column, default `true`. `scripts/seed-property.ts` populates plausible Australian-regional-resort placeholders for every field (brief §2.2 verbatim where public data exists; invented but realistic values for everything marked TBD or held by the manager — rates, F&B costs, capacities, room counts). The seed script's top-of-file comment documents which fields are public vs invented and the basis for each placeholder. Room counts always sum to 83 (brief §6 hard gate).
+
+The first time a manager saves an edit to a record from the admin UI, `is_placeholder` flips to `false`. There is no UI to flip it back — explicit re-seeding is required.
+
+**Per-record yellow banner + dashboard tally.** The knowledge CRUD UI shows a yellow banner over any record where `is_placeholder = true`: *"Seed data — replace with real data from the onboarding workbook before going live."* The dashboard shows a live tally: *"N of M property knowledge records still use placeholder data."* Both are queries off `is_placeholder`.
+
+**Global `system_settings.production_mode: boolean`** (default `false`). When `false`:
+- Every generated marketing asset is watermarked **"TEST — built from placeholder data"** (rendered into the PDF/HTML output by the asset generation layer, not just a CSS overlay).
+- The distribution checklist UI shows a banner: *"Production mode disabled — outputs are for review only, do not distribute."* The "Mark sent" checkboxes are disabled.
+- All v1 distribution adapters (which write files for human download — there are no external API calls in v1) prefix downloaded filenames with `TEST_`.
+
+`production_mode` can only be flipped to `true` by a manager-role user, only via the settings UI, only when all three onboarding hard gates (§10) are green AND `is_placeholder = false` for every row in the property knowledge tables. The flip is logged to `audit_log` with the user and the count of records that were real-data at the time. Flipping back to `false` is allowed and logged.
+
+**Generation pipelines work normally throughout.** Event invention, package proposals, asset generation, partner research, post-event synthesis — all run identically against placeholder and real data. Watermarking is the only behavioural difference. This means the system is fully end-to-end testable during the build, and the moment real data is plugged in there is no integration step beyond editing knowledge rows and flipping `production_mode`.
+
+The single source of truth for placeholder status across the schema is the per-table `is_placeholder` column. `production_mode` is a global gate, not a redundant per-record marker — it would be a foot-gun to allow "production mode on, but this one row is placeholder."
 
 ---
 
