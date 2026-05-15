@@ -12,6 +12,7 @@
   "MD036": false,        // emphasis as heading
   "MD041": false,        // first line must be H1 — fine but not enforced
   "MD040": false,        // code-fence language — we use language-less blocks for ASCII trees and pseudocode
+  "MD032": false,        // blanks around lists — GitHub renders fine without; style nit, and SPEC.md is verbatim
   "MD046": false,        // code block style
   "MD049": false,        // emphasis style
   "MD050": false         // strong style
