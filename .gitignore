@@ -42,3 +42,6 @@ next-env.d.ts
 # Drizzle / Supabase local
 supabase/.branches
 supabase/.temp
+
+# Generated migrations metadata (drizzle-kit creates these locally only)
+supabase/migrations/meta/

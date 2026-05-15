@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '.markdownlint.jsonc'
+      - '.lycheeignore'
+  push:
+    branches:
+      - Main
+    paths-ignore:
+      - '**/*.md'
+      - '.markdownlint.jsonc'
+      - '.lycheeignore'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: typecheck + lint + test + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        env:
+          # CI does not have a real Supabase project. The build only needs
+          # NEXT_PUBLIC_* vars to be present (Next inlines them). DATABASE_URL
+          # is consumed at runtime by drizzle/postgres and not required for
+          # `next build`.
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+        run: pnpm build

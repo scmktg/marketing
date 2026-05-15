@@ -1,8 +1,10 @@
 # The Beachie Midweek Engine — Implementation Plan
 
-**Status:** Draft v0.2 — for manager review before any scaffolding work begins.
+**Status:** Draft v0.3 — scaffolding in progress.
 **Source spec:** [`docs/SPEC.md`](./SPEC.md) (the master brief; treat as authoritative when this plan and the spec disagree).
 **Target:** v1, brain-only, no external integrations beyond OpenAI.
+
+**Changelog v0.2 → v0.3:** Added the placeholder seed-data + `production_mode` strategy (new §3.x, §6.x) so the build can run ahead of onboarding data collection. Every property knowledge table gets an `is_placeholder` boolean (default true for seed-script values, flips to false on first manager edit). Admin UI shows yellow banners per record + a dashboard tally. A single `system_settings.production_mode` boolean (default false) gates real distribution: when false, every generated marketing asset is watermarked "TEST — built from placeholder data" and the distribution checklist refuses to mark items "sent". Manager flips it true only after replacing placeholders and signing off onboarding.
 
 **Changelog v0.1 → v0.2:** Brand voice promoted to a first-class structural guardrail (§4.5, §4.6). Image guardrail switched from a word blocklist to a category enum (§4.5, §6). Voucher schema restructured as `voucher_batches` (§3). Kill switch split into three granular flags (§3, §7). `attribution_notes` added to `bookings` (§3). Explicit onboarding hard gates added (new §10). On-demand chat router design added (new §4.7). Testing approach added (new §11). Local dev story added (new §12). CSV export added for partners and bookings (§3, §13). Inngest cost projection added (§1.2). Sections 10–13 from v0.1 renumbered to 13–16.
 
@@ -242,6 +244,27 @@ system_settings            — single row;
 - **`audit_log.before/after` is jsonb** — not joinable but trivially diffable in the UI.
 - **No soft-delete** — kept simple in v1. Status fields cover lifecycle.
 
+### 3.1 Placeholder seed data and `production_mode`
+
+The build runs ahead of onboarding data collection. To make that safe, two mechanisms work together:
+
+**Per-row `is_placeholder: boolean`.** Every property knowledge table (`property_profile`, `room_types`, `function_spaces`, `fb_venues`, `regular_programming`, `local_context_pois`, `target_postcodes`, `brand_voice`, `operational_constants`, `photo_library`, `talent_database`) gets an `is_placeholder` column, default `true`. `scripts/seed-property.ts` populates plausible Australian-regional-resort placeholders for every field (brief §2.2 verbatim where public data exists; invented but realistic values for everything marked TBD or held by the manager — rates, F&B costs, capacities, room counts). The seed script's top-of-file comment documents which fields are public vs invented and the basis for each placeholder. Room counts always sum to 83 (brief §6 hard gate).
+
+The first time a manager saves an edit to a record from the admin UI, `is_placeholder` flips to `false`. There is no UI to flip it back — explicit re-seeding is required.
+
+**Per-record yellow banner + dashboard tally.** The knowledge CRUD UI shows a yellow banner over any record where `is_placeholder = true`: *"Seed data — replace with real data from the onboarding workbook before going live."* The dashboard shows a live tally: *"N of M property knowledge records still use placeholder data."* Both are queries off `is_placeholder`.
+
+**Global `system_settings.production_mode: boolean`** (default `false`). When `false`:
+- Every generated marketing asset is watermarked **"TEST — built from placeholder data"** (rendered into the PDF/HTML output by the asset generation layer, not just a CSS overlay).
+- The distribution checklist UI shows a banner: *"Production mode disabled — outputs are for review only, do not distribute."* The "Mark sent" checkboxes are disabled.
+- All v1 distribution adapters (which write files for human download — there are no external API calls in v1) prefix downloaded filenames with `TEST_`.
+
+`production_mode` can only be flipped to `true` by a manager-role user, only via the settings UI, only when all three onboarding hard gates (§10) are green AND `is_placeholder = false` for every row in the property knowledge tables. The flip is logged to `audit_log` with the user and the count of records that were real-data at the time. Flipping back to `false` is allowed and logged.
+
+**Generation pipelines work normally throughout.** Event invention, package proposals, asset generation, partner research, post-event synthesis — all run identically against placeholder and real data. Watermarking is the only behavioural difference. This means the system is fully end-to-end testable during the build, and the moment real data is plugged in there is no integration step beyond editing knowledge rows and flipping `production_mode`.
+
+The single source of truth for placeholder status across the schema is the per-table `is_placeholder` column. `production_mode` is a global gate, not a redundant per-record marker — it would be a foot-gun to allow "production mode on, but this one row is placeholder."
+
 ---
 
 ## 4. Prompt architecture
@@ -472,7 +495,7 @@ Brief §6 lists 14 onboarding steps. Not all are equal — some block the system
 
 1. **Room inventory complete.** `SUM(room_types.count) = property_profile.total_rooms` (= 83). Enforced as a DB check constraint and as a UI block on the dashboard until satisfied. Brief §6 step 3.
 2. **Brand voice reviewed by manager.** `brand_voice.reviewed_by_manager = true`, set explicitly by the manager clicking "I have reviewed this voice guide" during onboarding step 10. Until then, every generation pipeline refuses with a clear error linking back to the voice-edit screen. Prevents shipping campaigns in a hallucinated voice.
-3. **Photo library ≥ 20 photos.** `COUNT(photo_library) ≥ 20`. The asset visual pipeline (landing pages, flyers) refuses below this — the hero photo selector has nothing to pick from.
+3. **Photo library ≥ 40 photos.** `COUNT(photo_library) ≥ 40`. The asset visual pipeline (landing pages, flyers) refuses below this — the hero photo selector has nothing to pick from. Threshold raised from 20 to 40 to give the selector real variety across categories (rooms / lake / grounds / food / function spaces / brand details).
 
 The onboarding flow shows a persistent banner listing the unmet gates until they're all green; the dashboard's "Generate" buttons are disabled with a tooltip pointing to the failing gate.
 
@@ -504,7 +527,7 @@ Tight in v1; expandable as the surface area grows.
 
 ### 11.2 End-to-end: Playwright, one spec only in v1
 
-The single e2e spec covers onboarding end-to-end: signup → create knowledge base → upload 20 photos (fixtures) → seed partners → mark voice reviewed → land on dashboard. Onboarding is the only flow where a regression silently breaks the entire system (a soft-gate bug doesn't; an onboarding bug does), so it gets the only e2e in v1. We add more in subsequent weeks if it pays off.
+The single e2e spec covers onboarding end-to-end: signup → create knowledge base → upload 40 photos (fixtures) → seed partners → mark voice reviewed → land on dashboard. Onboarding is the only flow where a regression silently breaks the entire system (a soft-gate bug doesn't; an onboarding bug does), so it gets the only e2e in v1. We add more in subsequent weeks if it pays off.
 
 ### 11.3 Prompt evals — `docs/prompts/evals/`
 
@@ -564,11 +587,12 @@ Uses the system Chrome via `puppeteer` (not `@sparticuz/chromium`). PDF outputs 
 
 Mapping brief §10 to discrete PRs. Each PR is reviewable in <1 hour.
 
+**Note on `feat/scaffold` + `feat/knowledge-schema`:** these two PRs from the original plan were merged into a single `feat/scaffold` PR during build. Rationale: the placeholder + `production_mode` strategy (§3.1) requires the property knowledge schema to exist from day one, so splitting them produced an empty intermediate state. The merged PR landed both the Next.js/Supabase/Drizzle foundation and all 11 property knowledge tables + idempotent seed script in one reviewable unit.
+
 | Week | PR | Deliverable | Definition of done |
 |---|---|---|---|
-| 1 | `feat/scaffold` | Next.js + Drizzle + Supabase + Auth shell | Logged-in user lands on empty dashboard |
-| 1 | `feat/knowledge-schema` | Property knowledge tables + migrations + seed script | `pnpm seed:property` populates §2.2 defaults |
-| 1 | `feat/knowledge-crud` | Admin CRUD UI for all 7 knowledge tables | Manager can edit rates; marketing has read-only |
+| 1 | `feat/scaffold` *(includes former `feat/knowledge-schema`)* | Next.js + Drizzle + Supabase + Auth shell + all 11 property knowledge tables with `is_placeholder` + idempotent seed + room-count trigger | Logged-in user lands on empty dashboard; `pnpm seed:property` populates 11 tables idempotently with rooms summing to 83 |
+| 1 | `feat/knowledge-crud` | Admin CRUD UI for all 11 knowledge tables | Manager can edit any record (flips `is_placeholder=false`); marketing has read-only |
 | 1 | `feat/onboarding` | 14-step onboarding flow with the three hard gates (§10) | Onboarding completion gates dashboard; soft banners visible |
 | 2 | `feat/prompt-runtime` | `lib/ai/client.ts`, prompts_log, cost tracking, granular kill-switch flags + master toggle UI, dev OpenAI mock | Every OpenAI call logged with cost; dev mock works offline |
 | 2 | `feat/brand-voice-pipeline` | `brand_voice` table + reviewed_by_manager gate + conformance scorer | Generation refuses when voice not reviewed; scorer attaches to every asset |
@@ -628,7 +652,7 @@ We can scaffold without these but the system will not produce useful proposals u
 | Brand voice drift across regenerations | Inconsistent campaigns | Conformance scorer (§4.6) is the structural fix; voice version pinned per proposal |
 | Manager doesn't complete onboarding fully | System can't produce useful proposals | Hard gates (§10) block generation; soft banners list what's missing without halting work |
 | Choice Hotels brand standards conflict | Generated copy may violate parent brand | Hold marketing-asset generation behind a soft banner until brand docs are uploaded; flag audit entries until then |
-| Image library too small | Repetitive visual assets | ≥ 20 photos is a hard gate (§10) |
+| Image library too small | Repetitive visual assets | ≥ 40 photos is a hard gate (§10) |
 | Postgres jsonb proposal schema drift | Hard to migrate later | Version every jsonb shape (`content.version`); writer always writes current version; reader supports prior versions |
 | Cost overrun | OpenAI bill blows the cap | Hard monthly cap + kill switch + per-user rate limits on on-demand chat; dev-mode USD 5/day cap |
 | Supabase RLS bugs locking out admin | Site broken | Server-side role checks are primary; RLS is defence-in-depth, not the gate |
