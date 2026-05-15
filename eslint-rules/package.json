@@ -1,0 +1,9 @@
+{
+  "name": "eslint-plugin-require-audit-log",
+  "version": "0.1.0",
+  "private": true,
+  "main": "require-audit-log.js",
+  "peerDependencies": {
+    "eslint": ">=8"
+  }
+}
