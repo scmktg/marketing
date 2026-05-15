@@ -1,0 +1,42 @@
+name: docs
+
+on:
+  pull_request:
+    paths:
+      - '**/*.md'
+      - '.github/workflows/docs.yml'
+      - '.markdownlint.jsonc'
+      - '.lycheeignore'
+  push:
+    branches:
+      - Main
+    paths:
+      - '**/*.md'
+      - '.github/workflows/docs.yml'
+      - '.markdownlint.jsonc'
+      - '.lycheeignore'
+
+permissions:
+  contents: read
+
+jobs:
+  markdownlint:
+    name: markdownlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2@0.13.0
+      - name: Run markdownlint
+        run: markdownlint-cli2 "README.md" "docs/**/*.md"
+
+  links:
+    name: link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --verbose --max-concurrency 4 README.md 'docs/**/*.md'
+          fail: true
