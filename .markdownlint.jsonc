@@ -1,0 +1,19 @@
+// Permissive markdownlint config — structural problems only, not style nits.
+// We care about: broken headings, broken lists, broken tables, bad links.
+// We don't care about: line length, trailing punctuation in headings, emphasis style.
+{
+  "default": true,
+  "MD013": false,        // line length — irrelevant for spec/plan docs
+  "MD024": false,        // duplicate headings — common across sections
+  "MD025": false,        // single H1 — we have one per file but don't enforce
+  "MD026": false,        // trailing punctuation in headings
+  "MD033": false,        // inline HTML — fine in markdown
+  "MD034": false,        // bare URLs — fine
+  "MD036": false,        // emphasis as heading
+  "MD041": false,        // first line must be H1 — fine but not enforced
+  "MD040": false,        // code-fence language — we use language-less blocks for ASCII trees and pseudocode
+  "MD032": false,        // blanks around lists — GitHub renders fine without; style nit, and SPEC.md is verbatim
+  "MD046": false,        // code block style
+  "MD049": false,        // emphasis style
+  "MD050": false         // strong style
+}
