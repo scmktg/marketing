@@ -389,7 +389,29 @@ AI image generation is **category-bounded** rather than word-blocked. The LLM ne
 { "decorative_image": { "category": "abstract_motif", "palette_hint": "lakeside-blue-cream", "style_hint": "Hamptons" } }
 ```
 
-`lib/ai/images.ts` reads the category, looks up the corresponding code-owned prompt template (e.g. `"abstract decorative motif suggesting [palette_hint] tones, [style_hint] aesthetic, no objects, no text, no people, suitable as a header background"`), and only then calls `gpt-image-1`. Any output where `category` ∉ `{decorative_background, abstract_motif, icon_set, texture, pattern}` is rejected before an image API call is made. This is structurally stronger than a word blocklist (a blocklist fails on "individual", "human figure", "guest space", paraphrases, non-English, etc.) and keeps the blast radius of a model-side jailbreak attempt bounded by code.
+`lib/ai/images.ts` exposes exactly one function for decorative generation. The signature takes `category` and `styleBrief` as separate, typed parameters — never a free-form prompt string with a category label:
+
+```ts
+type ImageCategory =
+  | "decorative_background"
+  | "abstract_motif"
+  | "icon_set"
+  | "texture"
+  | "pattern";
+
+type StyleBrief = {
+  paletteHint?: string;   // e.g. "lakeside-blue-cream" — short, controlled vocabulary
+  styleHint?: string;     // e.g. "Hamptons" — drawn from brand_voice.rules
+  aspectRatio: "1:1" | "16:9" | "4:5" | "3:4";
+};
+
+function generateDecorativeImage(
+  category: ImageCategory,
+  styleBrief: StyleBrief,
+): Promise<ImageRef>;
+```
+
+Internally the function looks up the code-owned prompt template for `category` (e.g. `"abstract decorative motif suggesting {paletteHint} tones, {styleHint} aesthetic, no objects, no text, no people, suitable as a header background"`), interpolates `styleBrief` fields, and only then calls `gpt-image-1`. The LLM that generates the asset returns a structured request — `{ category, styleBrief }` as separate JSON fields, Zod-validated — which the caller passes through to `generateDecorativeImage`. There is no path where an LLM-authored string becomes the image prompt. Any request whose `category` ∉ `ImageCategory` fails Zod validation before any image API call is made. This is structurally stronger than a word blocklist (a blocklist fails on "individual", "human figure", "guest space", paraphrases, non-English, etc.) and keeps the blast radius of a model-side jailbreak attempt bounded by code.
 
 ---
 
