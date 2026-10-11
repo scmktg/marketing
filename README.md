@@ -1,34 +1,40 @@
 # Stevens Marketing
 
-Minimal, performance-based marketing website built using Next.js App Router, React, TypeScript and Tailwind CSS.
+An independent marketing practice and open knowledge website. Built with Next.js App Router, React, TypeScript, and Tailwind CSS.
 
-## Setup
+The public site is organised around personal principles, independently authored research guides and templates, a studies portfolio, and a direct option to engage the practitioner. It does not imply an agency team or publish invented case-study results.
 
-1. Install Node.js 20 or newer.
+## Add research, templates and principles
+
+Edit `src/lib/knowledge.ts`. Each entry has a unique slug, type (`Guide`, `Template`, or `Principle`), title, description, reading time and content sections. The resource index and detail routes use this data automatically, and resource URLs are included in the sitemap.
+
+Studies are intentionally unpublished until there are real, verifiable projects to describe. Edit `src/app/studies/page.tsx` when ready to add research, results and appropriate permissions. Clearly distinguish independent studies, experiments and actual client results.
+
+## Local setup
+
+1. Install Node.js 20+.
 2. Run `npm install`.
-3. Copy `.env.example` to `.env.local` and configure the values.
+3. Copy `.env.example` to `.env.local` and configure your values.
 4. Run `npm run dev`.
 
 ## Environment variables
 
-- `NEXT_PUBLIC_SITE_URL`: production website origin (for canonical links and sitemap).
-- `CONTACT_EMAIL`: business email shown on Contact and Privacy pages.
-- `RESEND_API_KEY`: server-only Resend API key.
-- `ENQUIRY_TO_EMAIL`: recipient for enquiry notifications.
-- `ENQUIRY_FROM_EMAIL`: sending address on a domain verified in Resend.
+- `NEXT_PUBLIC_SITE_URL`: production site origin (canonicals and sitemap).
+- `CONTACT_EMAIL`: real business contact email.
+- `RESEND_API_KEY`: secret API key (server-only).
+- `ENQUIRY_TO_EMAIL`: inbox receiving enquiries.
+- `ENQUIRY_FROM_EMAIL`: sender on a domain verified by Resend.
 
-If Resend settings are missing, the enquiry endpoint deliberately fails with HTTP 503; it does not silently discard the enquiry.
+Without configured email delivery the enquiry endpoint returns an error instead of a false success.
 
 ## Deployment
 
-Import `scmktg/marketing` into Vercel, configure the same environment variables under project settings, and deploy. Test an actual form submission end-to-end after verifying the Resend sending domain.
+Import `scmktg/marketing` into Vercel and set environment variables in the project settings. Test a real enquiry after configuring the Resend sending domain. Check privacy wording, contact information and production domain before launch.
 
 ## Quality checks
 
-Run `npm run lint`, `npm run typecheck`, and `npm run build`. These commands are documented but have not yet been executed in this connector-only implementation.
+Run `npm run lint`, `npm run typecheck`, and `npm run build`. Those checks have not been executed through the GitHub connector; treat build verification as outstanding.
 
-## Launch checklist
+The enquiry API uses in-memory best-effort rate limiting. For higher traffic levels, add a persistent shared rate-limiting mechanism.
 
-Confirm the contact address, canonical domain, legal identity and privacy terms; test mobile layouts, keyboard navigation, and email success/failure paths. Server-side rate limiting uses best-effort memory storage; for significant production traffic, migrate to a shared rate-limiting store.
-
-The current scope is limited to public marketing pages and enquiries. No client dashboard, account management, commissions backend or authentication has been built.
+This phase includes no dashboards, client accounts, authentication or commission backend.
